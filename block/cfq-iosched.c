@@ -2975,7 +2975,8 @@ static void cfq_arm_slice_timer(struct cfq_data *cfqd)
 	else
 		sl = cfqd->cfq_slice_idle;
 
-	mod_timer(&cfqd->idle_slice_timer, now + sl);
+	hrtimer_start(&cfqd->idle_slice_timer, ns_to_ktime(sl),
+		      HRTIMER_MODE_REL);
 	cfqg_stats_set_start_idle_time(cfqq->cfqg);
 	//cfq_log_cfqq(cfqd, cfqq, "arm_idle: %llu group_idle: %d", sl,
 	//		group_idle ? 1 : 0);
