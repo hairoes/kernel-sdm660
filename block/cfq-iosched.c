@@ -4760,15 +4760,14 @@ STORE_FUNCTION(cfq_target_latency_store, &cfqd->cfq_target_latency, 1, UINT_MAX,
 static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)	\
 {									\
 	struct cfq_data *cfqd = e->elevator_data;			\
-	unsigned int __data, __min = (MIN), __max = (MAX);		\
-									\
-	cfq_var_store(&__data, (page));					\
-	if (__data < __min)						\
-		__data = __min;						\
-	else if (__data > __max)					\
-		__data = __max;						\
+	unsigned int __data;						\
+	int ret = cfq_var_store(&__data, (page), count);		\
+	if (__data < (MIN))						\
+		__data = (MIN);						\
+	else if (__data > (MAX))					\
+		__data = (MAX);						\
 	*(__PTR) = (u64)__data * NSEC_PER_USEC;				\
-	return count;							\
+	return ret;							\
 }
 USEC_STORE_FUNCTION(cfq_slice_idle_us_store, &cfqd->cfq_slice_idle, 0, UINT_MAX);
 USEC_STORE_FUNCTION(cfq_group_idle_us_store, &cfqd->cfq_group_idle, 0, UINT_MAX);
