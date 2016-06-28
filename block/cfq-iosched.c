@@ -132,7 +132,7 @@ struct cfq_queue {
 	/* time when first request from queue completed and slice started. */
 	u64 slice_start;
 	u64 slice_end;
-	u64 slice_resid;
+	s64 slice_resid;
 
 	/* pending priority requests */
 	int prio_pending;
