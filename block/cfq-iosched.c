@@ -698,14 +698,15 @@ static inline void cfqg_stats_update_io_merged(struct cfq_group *cfqg, int rw)
 }
 
 static inline void cfqg_stats_update_completion(struct cfq_group *cfqg,
-			u64 start_time_ns, u64 io_start_time_ns, int rw)
+						u64 start_time_ns,
+						u64 io_start_time_ns,
+						int rw)
 {
 	struct cfqg_stats *stats = &cfqg->stats;
 	u64 now = ktime_get_ns();
 
 	if (now > io_start_time_ns)
-		blkg_rwstat_add(&stats->service_time, rw,
-				now - io_start_time_ns);
+		blkg_rwstat_add(&stats->service_time, rw, now - io_start_time_ns);
 	if (io_start_time_ns > start_time_ns)
 		blkg_rwstat_add(&stats->wait_time, rw,
 				io_start_time_ns - start_time_ns);
@@ -792,7 +793,9 @@ static inline void cfqg_stats_update_timeslice_used(struct cfq_group *cfqg,
 static inline void cfqg_stats_update_io_remove(struct cfq_group *cfqg, int rw) { }
 static inline void cfqg_stats_update_io_merged(struct cfq_group *cfqg, int rw) { }
 static inline void cfqg_stats_update_completion(struct cfq_group *cfqg,
-			u64 start_time_ns, u64 io_start_time_ns, int rw) { }
+						u64 start_time_ns,
+						u64 io_start_time_ns,
+						int rw) { }
 
 #endif	/* CONFIG_CFQ_GROUP_IOSCHED */
 
