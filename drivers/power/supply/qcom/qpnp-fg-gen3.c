@@ -842,7 +842,7 @@ static int fg_get_msoc(struct fg_chip *chip, int *msoc)
 	if (rc < 0)
 		return rc;
 #if defined(CONFIG_KERNEL_CUSTOM_D2S) || defined(CONFIG_KERNEL_CUSTOM_F7A)
-	/*
+ 	/*
        * To have better endpoints for 0 and 100, it is good to tune the
        * calculation discarding values 0 and 255 while rounding off. Rest
        * of the values 1-254 will be scaled to 1-99. DIV_ROUND_UP will not
@@ -875,10 +875,14 @@ static int fg_get_msoc(struct fg_chip *chip, int *msoc)
 	else if (*msoc == 0)
 		*msoc = 0;
 	else
-		*msoc = DIV_ROUND_CLOSEST((*msoc - 1) * (FULL_CAPACITY - 2),
-				FULL_SOC_RAW - 2) + 1;
-#endif
+		*msoc = DIV_ROUND_CLOSEST(*msoc * FULL_CAPACITY,
+				FULL_SOC_RAW);
+
+	if (*msoc >= FULL_CAPACITY)
+		*msoc = FULL_CAPACITY;
+
 	return 0;
+#endif
 }
 
 static bool is_batt_empty(struct fg_chip *chip)
