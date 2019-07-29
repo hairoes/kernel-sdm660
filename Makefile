@@ -415,6 +415,8 @@ ifeq ($(TARGET_BOARD_TYPE),auto)
 KBUILD_CFLAGS    += -DCONFIG_PLATFORM_AUTO
 endif
 
+KBUILD_CFLAGS	+= -mcpu=cortex-a53+crc+crypto
+
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__ $(call cc-option,-fno-PIE)  $(POLLY_FLAGS) $(OPT_FLAGS)
