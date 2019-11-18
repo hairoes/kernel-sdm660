@@ -1760,23 +1760,6 @@ static void __qseecom_clean_listener_sglistinfo(
 	}
 }
 
-/* wake up listener receive request wq retry delay (ms) and max attemp count */
-#define QSEECOM_WAKE_LISTENER_RCVWQ_DELAY          10
-#define QSEECOM_WAKE_LISTENER_RCVWQ_MAX_ATTEMP     3
-
-static int __qseecom_retry_wake_up_listener_rcv_wq(
-	struct qseecom_registered_listener_list *ptr_svc)
-{
-	int retry = 0;
-
-	while (ptr_svc->rcv_req_flag == 1 &&
-			 retry++ < QSEECOM_WAKE_LISTENER_RCVWQ_MAX_ATTEMP) {
-		wake_up_interruptible(&ptr_svc->rcv_req_wq);
-		msleep(QSEECOM_WAKE_LISTENER_RCVWQ_DELAY);
-	}
-	return ptr_svc->rcv_req_flag == 1;
-}
-
 static int __qseecom_process_incomplete_cmd(struct qseecom_dev_handle *data,
 					struct qseecom_command_scm_resp *resp)
 {
@@ -1841,7 +1824,6 @@ static int __qseecom_process_incomplete_cmd(struct qseecom_dev_handle *data,
 			status = QSEOS_RESULT_FAILURE;
 			goto err_resp;
 		}
-
 		pr_debug("waking up rcv_req_wq and waiting for send_resp_wq\n");
 
 		/* initialize the new signal mask with all signals*/
@@ -2168,7 +2150,6 @@ static int __qseecom_reentrancy_process_incomplete_cmd(
 			status = QSEOS_RESULT_FAILURE;
 			goto err_resp;
 		}
-
 		pr_debug("waking up rcv_req_wq and waiting for send_resp_wq\n");
 		if ((ptr_svc->rcv_req_flag == 1) &&
 			(__qseecom_retry_wake_up_listener_rcv_wq(ptr_svc))) {
@@ -7888,9 +7869,8 @@ static int qseecom_release(struct inode *inode, struct file *file)
 			data->type, data->mode, data);
 		switch (data->type) {
 		case QSEECOM_LISTENER_SERVICE:
-			pr_debug("release lsnr svc %d\n", data->listener.id);
-			free_private_data = false;
-			mutex_lock(&listener_access_lock);
+			__qseecom_listener_abort_all(1);
+			mutex_lock(&app_access_lock);
 			ret = qseecom_unregister_listener(data);
 			data->listener.release_called = true;
 			mutex_unlock(&listener_access_lock);
