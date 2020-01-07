@@ -916,6 +916,10 @@ static void iowarrior_disconnect(struct usb_interface *interface)
 	mutex_lock(&dev->mutex);
 
 	/* prevent device read, write and ioctl */
+<<<<<<< HEAD
+=======
+	dev->present = 0;
+>>>>>>> upstream/kernel.lnx.4.4.r37-rel
 
 	if (dev->opened) {
 		/* There is a process that holds a filedescriptor to the device ,
