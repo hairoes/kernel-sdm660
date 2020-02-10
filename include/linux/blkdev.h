@@ -37,7 +37,7 @@ struct blkcg_gq;
 struct blk_flush_queue;
 struct pr_ops;
 
-#define BLKDEV_MIN_RQ	4
+#define BLKDEV_MIN_RQ	1
 #define BLKDEV_MAX_RQ	32	/* Default maximum */
 
 /*
