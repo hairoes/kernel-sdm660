@@ -14,6 +14,8 @@
 #include <asm/kprobes.h>
 #include <asm/alternative.h>
 
+#ifdef HAVE_JUMP_LABEL
+
 union jump_code_union {
 	char code[JUMP_LABEL_NOP_SIZE];
 	struct {
@@ -138,3 +140,5 @@ __init_or_module void arch_jump_label_transform_static(struct jump_entry *entry,
 	if (jlstate == JL_STATE_UPDATE)
 		__jump_label_transform(entry, type, text_poke_early, 1);
 }
+
+#endif

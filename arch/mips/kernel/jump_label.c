@@ -16,6 +16,8 @@
 #include <asm/cacheflush.h>
 #include <asm/inst.h>
 
+#ifdef HAVE_JUMP_LABEL
+
 /*
  * Define parameters for the standard MIPS and the microMIPS jump
  * instruction encoding respectively:
@@ -70,3 +72,5 @@ void arch_jump_label_transform(struct jump_entry *e,
 	mutex_unlock(&text_mutex);
 	put_online_cpus();
 }
+
+#endif /* HAVE_JUMP_LABEL */
