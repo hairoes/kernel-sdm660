@@ -37,6 +37,7 @@ msm_adreno-y += \
 ifdef CONFIG_DEBUG_KERNEL
 msm_adreno-y += adreno_trace.o
 endif
+
 msm_adreno-$(CONFIG_QCOM_KGSL_IOMMU) += adreno_iommu.o
 msm_adreno-$(CONFIG_DEBUG_FS) += adreno_debugfs.o adreno_profile.o
 msm_adreno-$(CONFIG_COMPAT) += adreno_compat.o

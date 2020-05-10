@@ -651,17 +651,6 @@ static int sendcmd(struct adreno_device *adreno_dev,
 	secs = time.ktime;
 	nsecs = do_div(secs, 1000000000);
 
-	/*
-	 * For the first submission in any given command queue update the
-	 * expected expire time - this won't actually be used / updated until
-	 * the command queue in question goes current, but universally setting
-	 * it here avoids the possibilty of some race conditions with preempt
-	 */
-
-	if (dispatch_q->inflight == 1)
-		dispatch_q->expires = jiffies +
-			msecs_to_jiffies(adreno_drawobj_timeout);
-
 //	trace_adreno_cmdbatch_submitted(drawobj, (int) dispatcher->inflight,
 //		time.ticks, (unsigned long) secs, nsecs / 1000, drawctxt->rb,
 //		adreno_get_rptr(drawctxt->rb));
@@ -673,6 +662,17 @@ static int sendcmd(struct adreno_device *adreno_dev,
 	dispatch_q->cmd_q[dispatch_q->tail] = cmdobj;
 	dispatch_q->tail = (dispatch_q->tail + 1) %
 		ADRENO_DISPATCH_DRAWQUEUE_SIZE;
+
+	/*
+	 * For the first submission in any given command queue update the
+	 * expected expire time - this won't actually be used / updated until
+	 * the command queue in question goes current, but universally setting
+	 * it here avoids the possibilty of some race conditions with preempt
+	 */
+
+	if (dispatch_q->inflight == 1)
+		dispatch_q->expires = jiffies +
+			msecs_to_jiffies(adreno_drawobj_timeout);
 
 	/*
 	 * If we believe ourselves to be current and preemption isn't a thing,
@@ -1456,7 +1456,9 @@ int adreno_dispatcher_queue_cmds(struct kgsl_device_private *dev_priv,
 
 	spin_unlock(&drawctxt->lock);
 
-	kgsl_pwrctrl_update_l2pc(&adreno_dev->dev);
+	if (device->pwrctrl.l2pc_update_queue)
+		kgsl_pwrctrl_update_l2pc(&adreno_dev->dev,
+				KGSL_L2PC_QUEUE_TIMEOUT);
 
 	/* Add the context to the dispatcher pending list */
 	dispatcher_queue_context(adreno_dev, drawctxt);
@@ -1680,7 +1682,7 @@ static void adreno_fault_header(struct kgsl_device *device,
 		struct adreno_ringbuffer *rb, struct kgsl_drawobj_cmd *cmdobj)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-//	struct kgsl_drawobj *drawobj = DRAWOBJ(cmdobj);
+	struct kgsl_drawobj *drawobj = DRAWOBJ(cmdobj);
 	unsigned int status, rptr, wptr, ib1sz, ib2sz;
 	uint64_t ib1base, ib2base;
 
@@ -1694,7 +1696,7 @@ static void adreno_fault_header(struct kgsl_device *device,
 					   ADRENO_REG_CP_IB2_BASE_HI, &ib2base);
 	adreno_readreg(adreno_dev, ADRENO_REG_CP_IB2_BUFSZ, &ib2sz);
 
-//	if (drawobj != NULL) {
+	if (drawobj != NULL) {
 //		struct adreno_context *drawctxt =
 //			ADRENO_CONTEXT(drawobj->context);
 
@@ -1703,28 +1705,27 @@ static void adreno_fault_header(struct kgsl_device *device,
 //			status, rptr, wptr, ib1base, ib1sz,
 //			ib2base, ib2sz, drawctxt->rb->id);
 
-		//pr_fault(device, drawobj,
-		//	"gpu fault ctx %d ctx_type %s ts %d status %8.8X rb %4.4x/%4.4x ib1 %16.16llX/%4.4x ib2 %16.16llX/%4.4x\n",
-		//	drawobj->context->id, get_api_type_str(drawctxt->type),
-		//	drawobj->timestamp, status,
-		//	rptr, wptr, ib1base, ib1sz, ib2base, ib2sz);
+		pr_fault(device, drawobj,
+			"gpu fault ctx %d ts %d status %8.8X rb %4.4x/%4.4x ib1 %16.16llX/%4.4x ib2 %16.16llX/%4.4x\n",
+			drawobj->context->id, drawobj->timestamp, status,
+			rptr, wptr, ib1base, ib1sz, ib2base, ib2sz);
 
-//		if (rb != NULL)
-//			pr_fault(device, drawobj,
-//				"gpu fault rb %d rb sw r/w %4.4x/%4.4x\n",
-//				rb->id, rptr, rb->wptr);
-//	} else {
-//		int id = (rb != NULL) ? rb->id : -1;
+		if (rb != NULL)
+			pr_fault(device, drawobj,
+				"gpu fault rb %d rb sw r/w %4.4x/%4.4x\n",
+				rb->id, rptr, rb->wptr);
+	} else {
+		int id = (rb != NULL) ? rb->id : -1;
 
-//		dev_err(device->dev,
-//			"RB[%d]: gpu fault status %8.8X rb %4.4x/%4.4x ib1 %16.16llX/%4.4x ib2 %16.16llX/%4.4x\n",
-//			id, status, rptr, wptr, ib1base, ib1sz, ib2base,
-//			ib2sz);
-//		if (rb != NULL)
-//			dev_err(device->dev,
-//				"RB[%d] gpu fault rb sw r/w %4.4x/%4.4x\n",
-//				rb->id, rptr, rb->wptr);
-//	}
+		dev_err(device->dev,
+			"RB[%d]: gpu fault status %8.8X rb %4.4x/%4.4x ib1 %16.16llX/%4.4x ib2 %16.16llX/%4.4x\n",
+			id, status, rptr, wptr, ib1base, ib1sz, ib2base,
+			ib2sz);
+		if (rb != NULL)
+			dev_err(device->dev,
+				"RB[%d] gpu fault rb sw r/w %4.4x/%4.4x\n",
+				rb->id, rptr, rb->wptr);
+	}
 }
 
 void adreno_fault_skipcmd_detached(struct adreno_device *adreno_dev,
@@ -2501,7 +2502,7 @@ void adreno_dispatcher_schedule(struct kgsl_device *device)
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
 
-	queue_kthread_work(&kgsl_driver.worker, &dispatcher->work);
+	kthread_queue_work(&kgsl_driver.worker, &dispatcher->work);
 }
 
 /**
@@ -2797,7 +2798,7 @@ int adreno_dispatcher_init(struct adreno_device *adreno_dev)
 	setup_timer(&dispatcher->fault_timer, adreno_dispatcher_fault_timer,
 		(unsigned long) adreno_dev);
 
-	init_kthread_work(&dispatcher->work, adreno_dispatcher_work);
+	kthread_init_work(&dispatcher->work, adreno_dispatcher_work);
 
 	init_completion(&dispatcher->idle_gate);
 	complete_all(&dispatcher->idle_gate);
@@ -2835,6 +2836,7 @@ int adreno_dispatcher_idle(struct adreno_device *adreno_dev)
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
 	int ret;
 
+	BUG_ON(!mutex_is_locked(&device->mutex));
 	if (!test_bit(ADRENO_DEVICE_STARTED, &adreno_dev->priv))
 		return 0;
 
@@ -2843,8 +2845,8 @@ int adreno_dispatcher_idle(struct adreno_device *adreno_dev)
 	 * mutex is held and device is started
 	 */
 	if (mutex_is_locked(&dispatcher->mutex) &&
-		(__mutex_owner(&dispatcher->mutex) == current))
-		return -EDEADLK;
+		dispatcher->mutex.owner == current)
+		BUG_ON(1);
 
 	adreno_get_gpu_halt(adreno_dev);
 

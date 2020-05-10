@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -97,6 +97,73 @@ struct mem_entry_stats {
 }
 
 static void kgsl_cma_unlock_secure(struct kgsl_memdesc *memdesc);
+
+static ssize_t
+imported_mem_show(struct kgsl_process_private *priv,
+				int type, char *buf)
+{
+	struct kgsl_mem_entry *entry;
+	uint64_t imported_mem = 0;
+	int id = 0;
+
+	spin_lock(&priv->mem_lock);
+	for (entry = idr_get_next(&priv->mem_idr, &id); entry;
+		id++, entry = idr_get_next(&priv->mem_idr, &id)) {
+
+		int egl_surface_count = 0, egl_image_count = 0;
+		struct kgsl_memdesc *m = &entry->memdesc;
+
+		if ((kgsl_memdesc_usermem_type(m) != KGSL_MEM_ENTRY_ION) ||
+			entry->pending_free || (kgsl_mem_entry_get(entry) == 0))
+			continue;
+		spin_unlock(&priv->mem_lock);
+
+		kgsl_get_egl_counts(entry, &egl_surface_count,
+				&egl_image_count);
+
+		if (kgsl_memdesc_get_memtype(m) ==
+				KGSL_MEMTYPE_EGL_SURFACE)
+			imported_mem += m->size;
+		else if (egl_surface_count == 0) {
+			uint64_t size = m->size;
+
+			do_div(size, (egl_image_count ?
+					egl_image_count : 1));
+			imported_mem += size;
+		}
+
+		kgsl_mem_entry_put(entry);
+		spin_lock(&priv->mem_lock);
+	}
+	spin_unlock(&priv->mem_lock);
+
+	return scnprintf(buf, PAGE_SIZE, "%llu\n", imported_mem);
+}
+
+static ssize_t
+gpumem_mapped_show(struct kgsl_process_private *priv,
+				int type, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%llu\n",
+			priv->gpumem_mapped);
+}
+
+static ssize_t
+gpumem_unmapped_show(struct kgsl_process_private *priv, int type, char *buf)
+{
+	if (priv->gpumem_mapped > priv->stats[type].cur)
+		return -EIO;
+
+	return scnprintf(buf, PAGE_SIZE, "%llu\n",
+			priv->stats[type].cur - priv->gpumem_mapped);
+}
+
+static struct kgsl_mem_entry_attribute debug_memstats[] = {
+	__MEM_ENTRY_ATTR(0, imported_mem, imported_mem_show),
+	__MEM_ENTRY_ATTR(0, gpumem_mapped, gpumem_mapped_show),
+	__MEM_ENTRY_ATTR(KGSL_MEM_ENTRY_KERNEL, gpumem_unmapped,
+				gpumem_unmapped_show),
+};
 
 /**
  * Show the current amount of memory allocated for the given memtype
@@ -220,7 +287,13 @@ void kgsl_process_init_sysfs(struct kgsl_device *device,
 			&mem_stats[i].max_attr.attr))
 			WARN(1, "Couldn't create sysfs file '%s'\n",
 				mem_stats[i].max_attr.attr.name);
+	}
 
+	for (i = 0; i < ARRAY_SIZE(debug_memstats); i++) {
+		if (sysfs_create_file(&private->kobj,
+			&debug_memstats[i].attr))
+			WARN(1, "Couldn't create sysfs file '%s'\n",
+				debug_memstats[i].attr.name);
 	}
 }
 
@@ -566,29 +639,29 @@ static inline unsigned int _fixup_cache_range_op(unsigned int op)
 }
 #endif
 
-static int kgsl_do_cache_op(struct page *page, void *addr,
-		uint64_t offset, uint64_t size, unsigned int op)
+static inline void _cache_op(unsigned int op,
+			const void *start, const void *end)
 {
-	void (*cache_op)(const void *, const void *);
-
 	/*
 	 * The dmac_xxx_range functions handle addresses and sizes that
 	 * are not aligned to the cacheline size correctly.
 	 */
 	switch (_fixup_cache_range_op(op)) {
 	case KGSL_CACHE_OP_FLUSH:
-		cache_op = dmac_flush_range;
+		dmac_flush_range(start, end);
 		break;
 	case KGSL_CACHE_OP_CLEAN:
-		cache_op = dmac_clean_range;
+		dmac_clean_range(start, end);
 		break;
 	case KGSL_CACHE_OP_INV:
-		cache_op = dmac_inv_range;
+		dmac_inv_range(start, end);
 		break;
-	default:
-		return -EINVAL;
 	}
+}
 
+static int kgsl_do_cache_op(struct page *page, void *addr,
+		uint64_t offset, uint64_t size, unsigned int op)
+{
 	if (page != NULL) {
 		unsigned long pfn = page_to_pfn(page) + offset / PAGE_SIZE;
 		/*
@@ -608,7 +681,8 @@ static int kgsl_do_cache_op(struct page *page, void *addr,
 
 				page = pfn_to_page(pfn++);
 				addr = kmap_atomic(page);
-				cache_op(addr + offset, addr + offset + len);
+				_cache_op(op, addr + offset,
+						addr + offset + len);
 				kunmap_atomic(addr);
 
 				size -= len;
@@ -621,7 +695,7 @@ static int kgsl_do_cache_op(struct page *page, void *addr,
 		addr = page_address(page);
 	}
 
-	cache_op(addr + offset, addr + offset + (size_t) size);
+	_cache_op(op, addr + offset, addr + offset + (size_t) size);
 	return 0;
 }
 

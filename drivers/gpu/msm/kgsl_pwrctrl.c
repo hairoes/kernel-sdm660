@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -43,13 +43,6 @@
 
 #define DEFAULT_BUS_P 25
 
-/*
- * The effective duration of qos request in usecs. After
- * timeout, qos request is cancelled automatically.
- * Kept 80ms default, inline with default GPU idle time.
- */
-#define KGSL_L2PC_CPU_TIMEOUT	(80 * 1000)
-
 /* Order deeply matters here because reasons. New entries go on the end */
 static const char * const clocks[] = {
 	"src_clk",
@@ -68,7 +61,7 @@ static const char * const clocks[] = {
 	"iref_clk"
 };
 
-static unsigned long ib_votes[KGSL_MAX_BUSLEVELS];
+static unsigned int ib_votes[KGSL_MAX_BUSLEVELS];
 static int last_vote_buslevel;
 static int max_vote_buslevel;
 
@@ -144,9 +137,8 @@ static unsigned long kgsl_get_bw(void)
 static void _ab_buslevel_update(struct kgsl_pwrctrl *pwr,
 				unsigned long *ab)
 {
-	unsigned long ib = ib_votes[last_vote_buslevel];
-	unsigned long max_bw = ib_votes[max_vote_buslevel];
-
+	unsigned int ib = ib_votes[last_vote_buslevel];
+	unsigned int max_bw = ib_votes[max_vote_buslevel];
 	if (!ab)
 		return;
 	if (ib == 0)
@@ -516,12 +508,14 @@ EXPORT_SYMBOL(kgsl_pwrctrl_set_constraint);
 /**
  * kgsl_pwrctrl_update_l2pc() - Update existing qos request
  * @device: Pointer to the kgsl_device struct
+ * @timeout_us: the effective duration of qos request in usecs.
  *
  * Updates an existing qos request to avoid L2PC on the
  * CPUs (which are selected through dtsi) on which GPU
  * thread is running. This would help for performance.
  */
-void kgsl_pwrctrl_update_l2pc(struct kgsl_device *device)
+void kgsl_pwrctrl_update_l2pc(struct kgsl_device *device,
+			unsigned long timeout_us)
 {
 	int cpu;
 
@@ -535,7 +529,7 @@ void kgsl_pwrctrl_update_l2pc(struct kgsl_device *device)
 		pm_qos_update_request_timeout(
 				&device->pwrctrl.l2pc_cpus_qos,
 				device->pwrctrl.pm_qos_cpu_mask_latency,
-				KGSL_L2PC_CPU_TIMEOUT);
+				timeout_us);
 	}
 }
 EXPORT_SYMBOL(kgsl_pwrctrl_update_l2pc);
@@ -840,12 +834,19 @@ static ssize_t kgsl_pwrctrl_gpuclk_show(struct device *dev,
 				    struct device_attribute *attr,
 				    char *buf)
 {
+	unsigned long freq;
 	struct kgsl_device *device = kgsl_device_from_dev(dev);
 	struct kgsl_pwrctrl *pwr;
 	if (device == NULL)
 		return 0;
 	pwr = &device->pwrctrl;
-	return snprintf(buf, PAGE_SIZE, "%ld\n", kgsl_pwrctrl_active_freq(pwr));
+
+	if (device->state == KGSL_STATE_SLUMBER)
+		freq = pwr->pwrlevels[pwr->num_pwrlevels - 1].gpu_freq;
+	else
+		freq = kgsl_pwrctrl_active_freq(pwr);
+
+	return snprintf(buf, PAGE_SIZE, "%lu\n", freq);
 }
 
 static ssize_t __timer_store(struct device *dev, struct device_attribute *attr,
@@ -2150,6 +2151,10 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 
 	kgsl_property_read_u32(device, "qcom,l2pc-cpu-mask",
 			&pwr->l2pc_cpus_mask);
+
+	pwr->l2pc_update_queue = of_property_read_bool(
+				device->pdev->dev.of_node,
+				"qcom,l2pc-update-queue");
 
 	pm_runtime_enable(&pdev->dev);
 
