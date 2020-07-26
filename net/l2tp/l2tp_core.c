@@ -264,55 +264,6 @@ struct l2tp_session *l2tp_session_get(const struct net *net,
 }
 EXPORT_SYMBOL_GPL(l2tp_session_get);
 
-/* Like l2tp_session_find() but takes a reference on the returned session.
- * Optionally calls session->ref() too if do_ref is true.
- */
-struct l2tp_session *l2tp_session_get(struct net *net,
-				      struct l2tp_tunnel *tunnel,
-				      u32 session_id, bool do_ref)
-{
-	struct hlist_head *session_list;
-	struct l2tp_session *session;
-
-	if (!tunnel) {
-		struct l2tp_net *pn = l2tp_pernet(net);
-
-		session_list = l2tp_session_id_hash_2(pn, session_id);
-
-		rcu_read_lock_bh();
-		hlist_for_each_entry_rcu(session, session_list, global_hlist) {
-			if (session->session_id == session_id) {
-				l2tp_session_inc_refcount(session);
-				if (do_ref && session->ref)
-					session->ref(session);
-				rcu_read_unlock_bh();
-
-				return session;
-			}
-		}
-		rcu_read_unlock_bh();
-
-		return NULL;
-	}
-
-	session_list = l2tp_session_id_hash(tunnel, session_id);
-	read_lock_bh(&tunnel->hlist_lock);
-	hlist_for_each_entry(session, session_list, hlist) {
-		if (session->session_id == session_id) {
-			l2tp_session_inc_refcount(session);
-			if (do_ref && session->ref)
-				session->ref(session);
-			read_unlock_bh(&tunnel->hlist_lock);
-
-			return session;
-		}
-	}
-	read_unlock_bh(&tunnel->hlist_lock);
-
-	return NULL;
-}
-EXPORT_SYMBOL_GPL(l2tp_session_get);
-
 struct l2tp_session *l2tp_session_get_nth(struct l2tp_tunnel *tunnel, int nth,
 					  bool do_ref)
 {
