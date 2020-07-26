@@ -1,0 +1,17 @@
+version: 2.1
+jobs:
+  building:
+    docker:
+      - image: buildpack-deps:20.10
+    steps:
+      - checkout
+      - run:
+          name: building source
+          command: |
+           apt-get -y update && apt-get -y upgrade && apt-get -y install bc zip
+           git clone --depth=1 https://github.com/xoroxx/xscripts.git
+           chmod +x xscripts/circleci.sh && bash xscripts/circleci.sh
+workflows:
+  building:
+    jobs:
+      - building
