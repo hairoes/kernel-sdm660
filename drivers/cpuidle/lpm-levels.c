@@ -1454,7 +1454,7 @@ bool psci_enter_sleep(struct lpm_cluster *cluster, int idx, bool from_idle)
 	if (from_idle && ((cpu_level->use_bc_timer)||(idx >= cluster->min_child_level))) 
 		tick_broadcast_exit();
 
-		return success;
+	return success;
 	}
 }
 #elif defined(CONFIG_ARM_PSCI)
