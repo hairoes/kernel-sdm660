@@ -3404,7 +3404,7 @@ static inline void update_load_avg(struct cfs_rq *cfs_rq, struct sched_entity *s
 	struct rq *rq = rq_of(cfs_rq);
 	int cpu = cpu_of(rq);
 	int decayed;
-	void *ptr = NULL;
+	//void *ptr = NULL;
 
 	/*
 	 * Track task load average for carrying it to new CPU after migrated, and
