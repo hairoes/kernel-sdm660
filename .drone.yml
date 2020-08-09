@@ -1,0 +1,17 @@
+kind: pipeline
+name: deagle
+
+clone:
+  depth: 1
+
+steps:
+- name: building
+  image: ubuntu:20.10
+  environment:
+    bot_token:
+      from_secret: bot_token
+    chat_id:
+      from_secret: chat_id
+  commands:
+  - apt-get update -y && apt-get install -y build-essential bc curl git zip libssl-dev
+  - ./build

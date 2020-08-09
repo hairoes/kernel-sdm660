@@ -1,0 +1,118 @@
+#!/bin/bash
+
+DATE=$(date +"%y%m%d-%H%M")
+
+make_build(){
+	print "Make kernel dtb..." green
+	if [ $TOOLCHAIN == clang ]; then
+		PATH="$(pwd)/clang/bin:${PATH}"
+		make O=out ARCH=arm64 $1
+		make -j$(nproc --all) O=out \
+				ARCH=arm64 \
+				CC=clang \
+				AR=llvm-ar \
+				NM=llvm-nm \
+				OBJCOPY=llvm-objcopy \
+				OBJDUMP=llvm-objdump \
+				STRIP=llvm-strip \
+				CROSS_COMPILE=aarch64-linux-gnu- \
+				CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+	else
+		exit 1
+	fi
+}
+
+make_clean(){
+	rm -rf /out
+}
+
+send_msg(){
+	print "${1}" green
+	curl -s -X POST https://api.telegram.org/bot"${bot_token}"/sendMessage \
+		-d parse_mode="Markdown" \
+		-d chat_id="${chat_id}" \
+		-d text="${1}"
+}
+
+send_file(){
+	print "Sending file..." green
+	curl -F chat_id="${chat_id}" \
+		-F caption="sha1sum : $(sha1sum ${file} | awk '{ print $1 }')" \
+		-F document=@"${1}" \
+		 https://api.telegram.org/bot"${bot_token}"/sendDocument
+}
+
+mkzip(){
+	print "Generate zip file..." green
+
+	if [ -f $(pwd)/out/arch/arm64/boot/Image.gz-dtb ]; then
+		cp $(pwd)/out/arch/arm64/boot/Image.gz-dtb  anykernel
+		cd anykernel
+		zip -r9 ../$1 * -x .git README.md *placeholder
+		cd ..
+		send_file $1
+	else
+		send_msg "Build error !"
+		print "Build error !" red
+		exit 1
+	fi
+}
+
+print(){
+	echo ""
+	case ${2} in
+		"red")
+		echo -e "\033[31m $1 \033[0m";;
+		"green")
+		echo -e "\033[32m $1 \033[0m";;
+		*)
+		echo $1
+		;;
+	esac
+}
+
+gen_toolchain(){
+	print "Cloning toolchain files..." green
+	git clone --depth=1 https://github.com/NusantaraDevs/clang.git -b dev/12.0 clang
+	git clone --depth=1 https://github.com/DDEAGLE/AnyKernel3 -b release anykernel
+}
+
+build_oldcam(){
+
+	make_build "deagle_${1}_defconfig"
+
+	mkzip "$KERNELNAME-$LOCALVERSION-${1}-oldcam-$DATE.zip"
+
+	make_clean
+
+	if [ ! $1 == "wayne" ]
+	then
+		git apply oc.patch
+
+		make_build "deagle_${1}_defconfig"
+
+		mkzip "$KERNELNAME-$LOCALVERSION-${1}-oldcam-oc-$DATE.zip"
+
+		make_clean
+	fi
+}
+
+build_newcam(){
+
+	make_build "deagle_${1}_newcam_defconfig"
+
+	mkzip "$KERNELNAME-$LOCALVERSION-${1}-newcam-$DATE.zip"
+
+	make_clean
+
+	if [ ! $1 == "wayne" ]
+	then
+		git apply oc.patch
+
+		make_build "deagle_${1}_newcam_defconfig"
+
+		mkzip "$KERNELNAME-$LOCALVERSION-${1}-newcam-oc-$DATE.zip"
+
+		make_clean
+	fi
+}

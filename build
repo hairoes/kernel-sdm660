@@ -1,0 +1,35 @@
+#!/bin/bash
+
+export KERNELNAME=Deagle
+
+export LOCALVERSION=beta
+
+export KBUILD_BUILD_USER=builder
+
+export KBUILD_BUILD_HOST=deagle
+
+export TOOLCHAIN=clang
+
+export DEVICES=whyred
+
+source helper
+
+gen_toolchain
+
+send_msg "Start building..."
+
+START=$(date +"%s")
+
+for i in ${DEVICES//,/ }
+do
+	build_oldcam ${i}
+
+	build_newcam ${i}
+done
+
+END=$(date +"%s")
+
+DIFF=$(( END - START ))
+
+send_msg "Build complete in $((DIFF / 60))m $((DIFF % 60))s"
+
