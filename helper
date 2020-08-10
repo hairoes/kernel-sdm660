@@ -18,7 +18,10 @@ make_build(){
 				CROSS_COMPILE=aarch64-linux-gnu- \
 				CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 	else
-		exit 1
+		export CROSS_COMPILE=$(pwd)/gcc64/bin/aarch64-elf-
+		export CROSS_COMPILE_ARM32=$(pwd)/gcc32/bin/arm-eabi-
+		make O=out ARCH=arm64 $1
+		make -j$(nproc --all) O=out ARCH=arm64
 	fi
 }
 
@@ -73,7 +76,13 @@ print(){
 
 gen_toolchain(){
 	print "Cloning toolchain files..." green
-	git clone --depth=1 https://github.com/NusantaraDevs/clang.git -b dev/12.0 clang
+	if [ $TOOLCHAIN == "clang" ]
+	then
+		git clone --depth=1 https://github.com/kdrag0n/proton-clang clang
+	else
+		git clone --depth=1 https://github.com/chips-project/aarch64-elf gcc64
+		git clone --depth=1 https://github.com/chips-project/arm-eabi gcc32
+	fi
 	git clone --depth=1 https://github.com/DDEAGLE/AnyKernel3 -b release anykernel
 }
 
