@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DATE=$(date +"%y%m%d-%H%M")
+DATE=$(date +"%m%d-%H%M")
 
 make_build(){
 	print "Make kernel dtb..." green
@@ -78,7 +78,8 @@ gen_toolchain(){
 	print "Cloning toolchain files..." green
 	if [ $TOOLCHAIN == "clang" ]
 	then
-		git clone --depth=1 https://github.com/kdrag0n/proton-clang clang
+		#git clone --depth=1 https://github.com/kdrag0n/proton-clang clang
+		git clone --depth=1 https://github.com/NusantaraDevs/clang clang
 	else
 		git clone --depth=1 https://github.com/chips-project/aarch64-elf gcc64
 		git clone --depth=1 https://github.com/chips-project/arm-eabi gcc32
@@ -100,7 +101,7 @@ build_oldcam(){
 
 		make_build "deagle_${1}_defconfig"
 
-		mkzip "$KERNELNAME-$LOCALVERSION-${1}-oldcam-oc-$DATE.zip"
+		mkzip "$KERNELNAME-$LOCALVERSION-${1}-oldcam-overclock-$DATE.zip"
 
 		make_clean
 	fi
@@ -120,7 +121,7 @@ build_newcam(){
 
 		make_build "deagle_${1}_newcam_defconfig"
 
-		mkzip "$KERNELNAME-$LOCALVERSION-${1}-newcam-oc-$DATE.zip"
+		mkzip "$KERNELNAME-$LOCALVERSION-${1}-newcam-overclock-$DATE.zip"
 
 		make_clean
 	fi
