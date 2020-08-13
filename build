@@ -22,9 +22,16 @@ START=$(date +"%s")
 
 for i in ${DEVICES//,/ }
 do
-	build_oldcam ${i}
+	build_nonoc ${i} "oldcam"
 
-	build_newcam ${i}
+	build_nonoc ${i} "newcam"
+done
+
+for i in ${DEVICES//,/ }
+do
+        build_oc ${i} "oldcam"
+
+        build_oc ${i} "newcam"
 done
 
 END=$(date +"%s")
