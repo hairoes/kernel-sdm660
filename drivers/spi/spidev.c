@@ -736,7 +736,6 @@ static int spidev_release(struct inode *inode, struct file *filp)
 /*
 		kfree(spidev->tx_buffer);
 		spidev->tx_buffer = NULL;
-
 		kfree(spidev->rx_buffer);
 		spidev->rx_buffer = NULL;
 */
