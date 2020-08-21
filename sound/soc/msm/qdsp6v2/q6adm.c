@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1219,7 +1219,7 @@ static int adm_process_get_param_response(u32 opcode, u32 idx, u32 *payload,
 	struct adm_cmd_rsp_get_pp_params_v5 *v5_rsp = NULL;
 	struct adm_cmd_rsp_get_pp_params_v6 *v6_rsp = NULL;
 	u32 *param_data = NULL;
-	int data_size;
+	int data_size = 0;
 	int struct_size;
 
 	if (payload == NULL) {
@@ -1233,7 +1233,7 @@ static int adm_process_get_param_response(u32 opcode, u32 idx, u32 *payload,
 		if (payload_size < struct_size) {
 			pr_err("%s: payload size %d < expected size %d\n",
 				__func__, payload_size, struct_size);
-			break;
+			return -EINVAL;
 		}
 		v5_rsp = (struct adm_cmd_rsp_get_pp_params_v5 *) payload;
 		data_size = v5_rsp->param_hdr.param_size;
@@ -1244,7 +1244,7 @@ static int adm_process_get_param_response(u32 opcode, u32 idx, u32 *payload,
 		if (payload_size < struct_size) {
 			pr_err("%s: payload size %d < expected size %d\n",
 				__func__, payload_size, struct_size);
-			break;
+			return -EINVAL;
 		}
 		v6_rsp = (struct adm_cmd_rsp_get_pp_params_v6 *) payload;
 		data_size = v6_rsp->param_hdr.param_size;
@@ -1272,6 +1272,10 @@ static int adm_process_get_param_response(u32 opcode, u32 idx, u32 *payload,
 		pr_debug("%s: GET_PP PARAM: received parameter length: 0x%x\n",
 			 __func__, adm_get_parameters[idx]);
 		/* store params after param_size */
+		if (param_data == NULL) {
+			pr_err("%s: Invalid parameter data got!\n", __func__);
+			return -EINVAL;
+		}
 		memcpy(&adm_get_parameters[idx + 1], param_data, data_size);
 		return 0;
 	}
@@ -2419,8 +2423,8 @@ static int adm_arrange_mch_map_v8(
 		} else if (channel_mode == 6) {
 			ep_payload->dev_channel_mapping[0] = PCM_CHANNEL_FL;
 			ep_payload->dev_channel_mapping[1] = PCM_CHANNEL_FR;
-			ep_payload->dev_channel_mapping[2] = PCM_CHANNEL_LFE;
-			ep_payload->dev_channel_mapping[3] = PCM_CHANNEL_FC;
+			ep_payload->dev_channel_mapping[2] = PCM_CHANNEL_FC;
+			ep_payload->dev_channel_mapping[3] = PCM_CHANNEL_LFE;
 			ep_payload->dev_channel_mapping[4] = PCM_CHANNEL_LS;
 			ep_payload->dev_channel_mapping[5] = PCM_CHANNEL_RS;
 		} else if (channel_mode == 7) {
@@ -2428,18 +2432,18 @@ static int adm_arrange_mch_map_v8(
 			ep_payload->dev_channel_mapping[1] = PCM_CHANNEL_FR;
 			ep_payload->dev_channel_mapping[2] = PCM_CHANNEL_FC;
 			ep_payload->dev_channel_mapping[3] = PCM_CHANNEL_LFE;
-			ep_payload->dev_channel_mapping[4] = PCM_CHANNEL_LB;
-			ep_payload->dev_channel_mapping[5] = PCM_CHANNEL_RB;
+			ep_payload->dev_channel_mapping[4] = PCM_CHANNEL_LS;
+			ep_payload->dev_channel_mapping[5] = PCM_CHANNEL_RS;
 			ep_payload->dev_channel_mapping[6] = PCM_CHANNEL_CS;
 		} else if (channel_mode == 8) {
 			ep_payload->dev_channel_mapping[0] = PCM_CHANNEL_FL;
 			ep_payload->dev_channel_mapping[1] = PCM_CHANNEL_FR;
-			ep_payload->dev_channel_mapping[2] = PCM_CHANNEL_LFE;
-			ep_payload->dev_channel_mapping[3] = PCM_CHANNEL_FC;
-			ep_payload->dev_channel_mapping[4] = PCM_CHANNEL_LS;
-			ep_payload->dev_channel_mapping[5] = PCM_CHANNEL_RS;
-			ep_payload->dev_channel_mapping[6] = PCM_CHANNEL_LB;
-			ep_payload->dev_channel_mapping[7] = PCM_CHANNEL_RB;
+			ep_payload->dev_channel_mapping[2] = PCM_CHANNEL_FC;
+			ep_payload->dev_channel_mapping[3] = PCM_CHANNEL_LFE;
+			ep_payload->dev_channel_mapping[4] = PCM_CHANNEL_LB;
+			ep_payload->dev_channel_mapping[5] = PCM_CHANNEL_RB;
+			ep_payload->dev_channel_mapping[6] = PCM_CHANNEL_LS;
+			ep_payload->dev_channel_mapping[7] = PCM_CHANNEL_RS;
 		} else if (channel_mode == 10) {
 			ep_payload->dev_channel_mapping[0] = PCM_CHANNEL_FL;
 			ep_payload->dev_channel_mapping[1] = PCM_CHANNEL_FR;

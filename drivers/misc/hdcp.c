@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2018, 2019 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2085,7 +2085,8 @@ static void hdcp_lib_clean(struct hdcp_lib_handle *handle)
 	handle->authenticated = false;
 
 	/* AV mute the sink first to avoid artifacts */
-	handle->client_ops->mute_sink(handle->client_ctx);
+	if (handle->client_ops->mute_sink)
+		handle->client_ops->mute_sink(handle->client_ctx);
 
 	hdcp_lib_txmtr_deinit(handle);
 	if (!handle->legacy_app)

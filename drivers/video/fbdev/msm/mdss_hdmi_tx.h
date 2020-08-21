@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2017, 2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -138,6 +138,7 @@ struct hdmi_tx_ctrl {
 	bool power_data_enable[HDMI_TX_MAX_PM];
 	bool dc_support;
 	bool dc_feature_on;
+	bool use_bt2020;
 
 	void (*hdmi_tx_hpd_done)(void *data);
 	void *downstream_data;

@@ -1,7 +1,7 @@
 /*
  * Core MDSS framebuffer driver.
  *
- * Copyright (c) 2008-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2008-2020, The Linux Foundation. All rights reserved.
  * Copyright (C) 2007 Google Incorporated
  *
  * This software is licensed under the terms of the GNU General Public
@@ -4800,7 +4800,7 @@ static int mdss_fb_set_par(struct fb_info *info)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct fb_var_screeninfo *var = &info->var;
-	int old_imgType, old_format;
+	int old_imgType, old_format, out_format;
 	int ret = 0;
 
 	ret = mdss_fb_pan_idle(mfd);
@@ -4884,9 +4884,9 @@ static int mdss_fb_set_par(struct fb_info *info)
 				mfd->fbi->var.yres) * mfd->fb_page;
 
 	old_format = mfd->panel_info->out_format;
-	mfd->panel_info->out_format =
-			mdss_grayscale_to_mdp_format(var->grayscale);
-	if (!IS_ERR_VALUE(mfd->panel_info->out_format)) {
+	out_format = mdss_grayscale_to_mdp_format(var->grayscale);
+	if (!IS_ERR_VALUE(out_format)) {
+		mfd->panel_info->out_format = out_format;
 		if (old_format != mfd->panel_info->out_format)
 			mfd->panel_reconfig = true;
 	}

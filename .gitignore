@@ -117,6 +117,7 @@ all.config
 # fetched Android config fragments
 android/configs/android-*.cfg
 
-# mylist ignore
-*.sh
-/out
+#
+#Ignoring Android.bp link file
+#
+Android.bp
