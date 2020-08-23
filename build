@@ -2,7 +2,7 @@
 
 export KERNELNAME=Deagle
 
-export LOCALVERSION=V1.0
+export LOCALVERSION=V2
 
 export KBUILD_BUILD_USER=builder
 
@@ -10,7 +10,7 @@ export KBUILD_BUILD_HOST=deagle
 
 export TOOLCHAIN=clang
 
-export DEVICES=whyred
+export DEVICES=whyred,tulip,wayne
 
 source helper
 
