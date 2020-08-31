@@ -2,7 +2,7 @@
 
 export KERNELNAME=Deagle
 
-export LOCALVERSION=V2
+export LOCALVERSION=V3
 
 export KBUILD_BUILD_USER=builder
 
@@ -27,6 +27,7 @@ do
 	build_nonoc ${i} "newcam"
 done
 
+send_msg "Build OC..."
 for i in ${DEVICES//,/ }
 do
         build_oc ${i} "oldcam"
