@@ -2,13 +2,13 @@
 
 export KERNELNAME=Deagle
 
-export LOCALVERSION=V3
+export LOCALVERSION=V4
 
 export KBUILD_BUILD_USER=builder
 
 export KBUILD_BUILD_HOST=deagle
 
-export TOOLCHAIN=clang
+export TOOLCHAIN=gcc
 
 export DEVICES=whyred,tulip,wayne
 
