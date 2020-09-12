@@ -2,13 +2,13 @@
 
 export KERNELNAME=Deagle
 
-export LOCALVERSION=V4
+export LOCALVERSION=V5
 
 export KBUILD_BUILD_USER=builder
 
 export KBUILD_BUILD_HOST=deagle
 
-export TOOLCHAIN=gcc
+export TOOLCHAIN=clang
 
 export DEVICES=whyred,tulip,wayne
 
@@ -22,17 +22,23 @@ START=$(date +"%s")
 
 for i in ${DEVICES//,/ }
 do
-	build_nonoc ${i} "oldcam"
+	build ${i} -oldcam 
 
-	build_nonoc ${i} "newcam"
+	build ${i} -newcam
 done
 
 send_msg "Build OC..."
+
+git apply oc.patch
+
 for i in ${DEVICES//,/ }
 do
-        build_oc ${i} "oldcam"
+	if [ $i == "whyred" ] || [ $i == "tulip" ]
+	then
+		build ${i} -oldcam -overclock
 
-        build_oc ${i} "newcam"
+		build ${i} -newcam -overclock
+	fi
 done
 
 END=$(date +"%s")
@@ -40,4 +46,3 @@ END=$(date +"%s")
 DIFF=$(( END - START ))
 
 send_msg "Build complete in $((DIFF / 60))m $((DIFF % 60))s"
-

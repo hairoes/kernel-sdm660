@@ -40,7 +40,7 @@ send_msg(){
 send_file(){
 	print "Sending file..." green
 	curl -F chat_id="${chat_id}" \
-		-F caption="Type: ${type} | SHA1SUM : $(sha1sum ${file} | awk '{ print $1 }')" \
+		-F caption="DEVICE: ${type} | SHA1 : $(sha1sum ${file} | awk '{ print $1 }')" \
 		-F document=@"${1}" \
 		 https://api.telegram.org/bot"${bot_token}"/sendDocument
 }
@@ -78,7 +78,7 @@ gen_toolchain(){
 	print "Cloning toolchain files..." green
 	if [ $TOOLCHAIN == "clang" ]
 	then
-		git clone --depth=1 https://github.com/NusantaraDevs/clang clang
+		git clone --depth=1 https://github.com/kdrag0n/proton-clang clang
 	else
 		git clone --depth=1 https://github.com/chips-project/aarch64-elf gcc64
 		git clone --depth=1 https://github.com/chips-project/arm-eabi gcc32
@@ -86,38 +86,17 @@ gen_toolchain(){
 	git clone --depth=1 https://github.com/DDEAGLE/AnyKernel3 -b release anykernel
 }
 
-build_nonoc(){
+build(){
 
-	export type="${2} nonoc"
+	export type="${1} ${2} ${3}"
 
 	make_clean
 
-	if [ $2 == "oldcam" ]
+	if [ $2 == "-oldcam" ]
 	then
 		make_build "deagle_${1}_defconfig"
 	else
 		make_build "deagle_${1}_newcam_defconfig"
 	fi
-		mkzip "$KERNELNAME-$LOCALVERSION-${1}-${2}-$DATE.zip"
-}
-
-build_oc(){
-
-	export type="${2} oc"
-
-	make_clean
-
-	git apply oc.patch
-
-	if [ ! $1 == "wayne" ]
-	then
-		if [ $2 == "oldcam" ]
-		then
-			make_build "deagle_${1}_defconfig"
-		else
-			make_build "deagle_${1}_newcam_defconfig"
-		fi
-
-                mkzip "$KERNELNAME-$LOCALVERSION-${1}-${2}-overclock-$DATE.zip"
-	fi
+		mkzip "$KERNELNAME-$LOCALVERSION-${1}${2}${3}-$DATE.zip"
 }
