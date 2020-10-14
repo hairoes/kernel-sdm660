@@ -4175,7 +4175,8 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	pdata = &ctrl_pdata->panel_data;
 	init_completion(&pdata->te_done);
 	mutex_init(&pdata->te_mutex);
-	if (!te_irq_registered) {
+	if (pdata->panel_info.type == MIPI_CMD_PANEL) {
+		if (!te_irq_registered) {
 			rc = devm_request_irq(&pdev->dev,
 				gpio_to_irq(pdata->panel_te_gpio),
 				test_hw_vsync_handler, IRQF_TRIGGER_FALLING,
@@ -4187,7 +4188,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 			te_irq_registered = 1;
 			disable_irq_nosync(gpio_to_irq(pdata->panel_te_gpio));
 		}
-
+	}
 	rc = mdss_dsi_get_bridge_chip_params(pinfo, ctrl_pdata, pdev);
 	if (rc) {
 		pr_err("%s: Failed to get bridge params\n", __func__);

@@ -742,6 +742,7 @@ static void put_inst_helper(struct kref *kref)
 	msm_vidc_destroy(inst);
 }
 
+
 static void put_inst(struct msm_vidc_inst *inst)
 {
 	if (!inst)

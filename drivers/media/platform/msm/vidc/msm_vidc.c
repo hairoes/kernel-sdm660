@@ -1550,6 +1550,7 @@ static void close_helper(struct kref *kref)
 	msm_vidc_destroy(inst);
 }
 
+
 int msm_vidc_close(void *instance)
 {
 	struct msm_vidc_inst *inst = instance;

@@ -562,6 +562,11 @@ static void hid_concatenate_last_usage_page(struct hid_parser *parser)
 		return;
 	}
 
+	if (parser->local.usage_page_preceding == 3) {
+		dbg_hid("Using preceding usage page for final usage\n");
+		return;
+	}
+
 	for (i = 0; i < parser->local.usage_index; i++)
 		if (parser->local.usage_size[i] <= 2)
 			parser->local.usage[i] =

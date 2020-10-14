@@ -1683,6 +1683,7 @@ static const struct usb_gadget_driver configfs_driver_template = {
 #endif
 	.suspend	= configfs_composite_suspend,
 	.resume		= configfs_composite_resume,
+
 	.max_speed	= USB_SPEED_SUPER,
 	.driver = {
 		.owner          = THIS_MODULE,
