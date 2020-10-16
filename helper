@@ -1,10 +1,11 @@
 #!/bin/bash
 
-DATE=$(date +"%m%d-%H%M")
+DATE=$(date +"%Y%m%d-%H%M")
 
 make_build(){
 	print "Make kernel dtb..." green
 	if [ $TOOLCHAIN == clang ]; then
+		export KBUILD_COMPILER_STRING=$(clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
 		PATH="$(pwd)/clang/bin:${PATH}"
 		make O=out ARCH=arm64 $1
 		make -j$(nproc --all) O=out \
@@ -26,7 +27,7 @@ make_build(){
 }
 
 make_clean(){
-	rm -rf /out
+	rm -rf out
 }
 
 send_msg(){
