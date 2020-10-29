@@ -2,7 +2,7 @@
 
 export KERNELNAME=Deagle
 
-export LOCALVERSION=V6
+export LOCALVERSION=V7
 
 export KBUILD_BUILD_USER=builder
 
@@ -22,7 +22,7 @@ START=$(date +"%s")
 
 for i in ${DEVICES//,/ }
 do
-	build ${i} -oldcam 
+	build ${i} -oldcam
 
 	build ${i} -newcam
 done
