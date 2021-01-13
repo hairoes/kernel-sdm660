@@ -1,16 +1,20 @@
 #!/bin/bash
 
-export KERNELNAME=Deagle
+export KERNELNAME=YeongSinLie
 
+<<<<<<< HEAD
 export LOCALVERSION=V13
+=======
+export LOCALVERSION=-YeongSinlie-UProSarGang-uWu-WhyredProMax1
+>>>>>>> ae84a1666e2a (WTF)
 
 export KBUILD_BUILD_USER=builder
 
-export KBUILD_BUILD_HOST=deagle
+export KBUILD_BUILD_HOST=YeongSinLie
 
 export TOOLCHAIN=clang
 
-export DEVICES=whyred,tulip,wayne
+export DEVICES=whyred
 
 source helper
 
