@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2017, 2020, The Linux Foundation. All rights reserved.
  * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -422,7 +422,7 @@ int fg_write(struct fg_chip *chip, int addr, u8 *val, int len)
 
 	mutex_lock(&chip->bus_lock);
 #if defined(CONFIG_KERNEL_CUSTOM_E7T) || defined (CONFIG_KERNEL_CUSTOM_D2S)
-	sec_access = (addr & 0x00FF) > 0xBA;
+	sec_access = (addr & 0x00FF) >= 0xBA;
 #else
 	sec_access = (addr & 0x00FF) > 0xD0;
 #endif
@@ -466,7 +466,7 @@ int fg_masked_write(struct fg_chip *chip, int addr, u8 mask, u8 val)
 
 	mutex_lock(&chip->bus_lock);
 #if defined(CONFIG_KERNEL_CUSTOM_E7T) || defined (CONFIG_KERNEL_CUSTOM_D2S)
-	sec_access = (addr & 0x00FF) > 0xBA;
+	sec_access = (addr & 0x00FF) >= 0xBA;
 #else
 	sec_access = (addr & 0x00FF) > 0xD0;
 #endif
