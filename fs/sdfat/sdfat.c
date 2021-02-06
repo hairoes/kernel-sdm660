@@ -2977,7 +2977,7 @@ static const struct inode_operations sdfat_symlink_inode_operations = {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 	.readlink    = generic_readlink,
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	.get_link = sdfat_follow_link,
 #else /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0) */
 	.follow_link = sdfat_follow_link,
