@@ -2,11 +2,7 @@
 
 export KERNELNAME=YeongSinLie
 
-<<<<<<< HEAD
-export LOCALVERSION=V13
-=======
 export LOCALVERSION=-YeongSinlie-UProSarGang-uWu-WhyredProMax1
->>>>>>> ae84a1666e2a (WTF)
 
 export KBUILD_BUILD_USER=builder
 
