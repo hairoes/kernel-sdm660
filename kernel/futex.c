@@ -1318,62 +1318,6 @@ static void wait_for_owner_exiting(int ret, struct task_struct *exiting)
 	put_task_struct(exiting);
 }
 
-static int handle_exit_race(u32 __user *uaddr, u32 uval,
-			    struct task_struct *tsk)
-{
-	u32 uval2;
-
-	/*
-	 * If the futex exit state is not yet FUTEX_STATE_DEAD, tell the
-	 * caller that the alleged owner is busy.
-	 */
-	if (tsk && tsk->futex_state != FUTEX_STATE_DEAD)
-		return -EBUSY;
-
-	/*
-	 * Reread the user space value to handle the following situation:
-	 *
-	 * CPU0				CPU1
-	 *
-	 * sys_exit()			sys_futex()
-	 *  do_exit()			 futex_lock_pi()
-	 *                                futex_lock_pi_atomic()
-	 *   exit_signals(tsk)		    No waiters:
-	 *    tsk->flags |= PF_EXITING;	    *uaddr == 0x00000PID
-	 *  mm_release(tsk)		    Set waiter bit
-	 *   exit_robust_list(tsk) {	    *uaddr = 0x80000PID;
-	 *      Set owner died		    attach_to_pi_owner() {
-	 *    *uaddr = 0xC0000000;	     tsk = get_task(PID);
-	 *   }				     if (!tsk->flags & PF_EXITING) {
-	 *  ...				       attach();
-	 *  tsk->futex_state =               } else {
-	 *	FUTEX_STATE_DEAD;              if (tsk->futex_state !=
-	 *					  FUTEX_STATE_DEAD)
-	 *				         return -EAGAIN;
-	 *				       return -ESRCH; <--- FAIL
-	 *				     }
-	 *
-	 * Returning ESRCH unconditionally is wrong here because the
-	 * user space value has been changed by the exiting task.
-	 *
-	 * The same logic applies to the case where the exiting task is
-	 * already gone.
-	 */
-	if (get_futex_value_locked(&uval2, uaddr))
-		return -EFAULT;
-
-	/* If the user space value has changed, try again. */
-	if (uval2 != uval)
-		return -EAGAIN;
-
-	/*
-	 * The exiting task did not have a robust list, the robust list was
-	 * corrupted or the user space value in *uaddr is simply bogus.
-	 * Give up and tell user space.
-	 */
-	return -ESRCH;
-}
-
 /*
  * Lookup the task for the TID provided from user space and attach to
  * it after doing proper sanity checks.
@@ -2764,17 +2708,6 @@ static int fixup_owner(u32 __user *uaddr, struct futex_q *q, int locked)
 	 */
 	if (q->pi_state->owner == current)
 		return fixup_pi_state_owner(uaddr, q, NULL);
-
-	/*
-	 * Paranoia check. If we did not take the lock, then we should not be
-	 * the owner of the rt_mutex. Warn and establish consistent state.
-	 */
-	if (rt_mutex_owner(&q->pi_state->pi_mutex) == current) {
-		printk(KERN_ERR "fixup_owner: ret = %d pi-mutex: %p "
-				"pi-state %p\n", ret,
-				q->pi_state->pi_mutex.owner,
-				q->pi_state->owner);
-	}
 
 	return 0;
 }
