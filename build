@@ -12,11 +12,17 @@ export TOOLCHAIN=clang
 
 export DEVICES=whyred,tulip,wayne
 
+export TOKEN=1589576060:AAHy12j9US6KcNUgUaInYTC_aP2XJI-vZps
+
+export GRUP=-1001362420513
+
 source helper
 
 gen_toolchain
 
 send_msg "Start building..."
+
+send_pesan "Start building..."
 
 START=$(date +"%s")
 
@@ -28,6 +34,8 @@ do
 done
 
 send_msg "Build OC..."
+
+send_pesan "Build OC..."
 
 git apply oc.patch
 
@@ -46,3 +54,5 @@ END=$(date +"%s")
 DIFF=$(( END - START ))
 
 send_msg "Build complete in $((DIFF / 60))m $((DIFF % 60))s"
+
+send_pesan "Build complete in $((DIFF / 60))m $((DIFF % 60))s"

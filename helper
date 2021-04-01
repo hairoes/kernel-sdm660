@@ -38,12 +38,28 @@ send_msg(){
 		-d text="${1}"
 }
 
+send_pesan(){
+	print "${1}" green
+	curl -s -X POST https://api.telegram.org/bot"${TOKEN}"/sendMessage \
+		-d parse_mode="Markdown" \
+		-d chat_id="${GRUP}" \
+		-d text="${1}"
+}
+
 send_file(){
 	print "Sending file..." green
 	curl -F chat_id="${chat_id}" \
 		-F caption="DEVICE: ${type} | SHA1 : $(sha1sum ${file} | awk '{ print $1 }')" \
 		-F document=@"${1}" \
 		 https://api.telegram.org/bot"${bot_token}"/sendDocument
+}
+
+send_berkas(){
+	print "Sending file..." green
+	curl -F chat_id="${GRUP}" \
+		-F caption="DEVICE: ${type} | SHA1 : $(sha1sum ${file} | awk '{ print $1 }')" \
+		-F document=@"${1}" \
+		 https://api.telegram.org/bot"${TOKEN}"/sendDocument
 }
 
 mkzip(){
@@ -55,8 +71,10 @@ mkzip(){
 		zip -r9 ../$1 * -x .git README.md *placeholder
 		cd ..
 		send_file $1
+                send_berkas $1
 	else
 		send_msg "Build error !"
+                send_pesan "Build error !"
 		print "Build error !" red
 		exit 1
 	fi
