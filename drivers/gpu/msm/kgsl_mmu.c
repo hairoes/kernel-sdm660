@@ -432,7 +432,8 @@ void kgsl_mmu_put_gpuaddr(struct kgsl_memdesc *memdesc)
 	if (memdesc->size == 0 || memdesc->gpuaddr == 0)
 		return;
 
-	if (!kgsl_memdesc_is_global(memdesc))
+	if (!kgsl_memdesc_is_global(memdesc) &&
+			 (KGSL_MEMDESC_MAPPED & memdesc->priv))
 		unmap_fail = kgsl_mmu_unmap(pagetable, memdesc);
 
 	/*
@@ -605,10 +606,11 @@ enum kgsl_mmutype kgsl_mmu_get_mmutype(struct kgsl_device *device)
 EXPORT_SYMBOL(kgsl_mmu_get_mmutype);
 
 bool kgsl_mmu_gpuaddr_in_range(struct kgsl_pagetable *pagetable,
-		uint64_t gpuaddr)
+		uint64_t gpuaddr, uint64_t size)
 {
 	if (PT_OP_VALID(pagetable, addr_in_range))
-		return pagetable->pt_ops->addr_in_range(pagetable, gpuaddr);
+		return pagetable->pt_ops->addr_in_range(pagetable,
+			 gpuaddr, size);
 
 	return false;
 }
@@ -644,7 +646,7 @@ EXPORT_SYMBOL(kgsl_mmu_get_qtimer_global_entry);
  */
 
 static bool nommu_gpuaddr_in_range(struct kgsl_pagetable *pagetable,
-		uint64_t gpuaddr)
+		uint64_t gpuaddr, uint64_t size)
 {
 	return (gpuaddr != 0) ? true : false;
 }
