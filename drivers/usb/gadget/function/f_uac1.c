@@ -362,7 +362,6 @@ static struct usb_gadget_strings *uac1_strings[] = {
  * This function is an ALSA sound card following USB Audio Class Spec 1.0.
  */
 
-<<<<<<< HEAD
 /*-------------------------------------------------------------------------*/
 struct f_audio_buf {
 	u8 *buf;
@@ -574,9 +573,6 @@ static int audio_get_intf_req(struct usb_function *f,
 
 	return len;
 }
-
-=======
->>>>>>> 0d7c30430fda38fdc18f0be04fa2fcb292ebff19
 static int audio_set_endpoint_req(struct usb_function *f,
 		const struct usb_ctrlrequest *ctrl)
 {
