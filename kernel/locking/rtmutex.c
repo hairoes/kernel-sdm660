@@ -806,8 +806,6 @@ static int rt_mutex_adjust_prio_chain(struct task_struct *task,
 static int try_to_take_rt_mutex(struct rt_mutex *lock, struct task_struct *task,
 				struct rt_mutex_waiter *waiter)
 {
-	lockdep_assert_held(&lock->wait_lock);
-
 	/*
 	 * Before testing whether we can acquire @lock, we set the
 	 * RT_MUTEX_HAS_WAITERS bit in @lock->owner. This forces all
@@ -934,8 +932,6 @@ static int task_blocks_on_rt_mutex(struct rt_mutex *lock,
 	struct rt_mutex *next_lock;
 	int chain_walk = 0, res;
 
-	lockdep_assert_held(&lock->wait_lock);
-
 	/*
 	 * Early deadlock detection. We really don't want the task to
 	 * enqueue on itself just to untangle the mess later. It's not
@@ -949,6 +945,7 @@ static int task_blocks_on_rt_mutex(struct rt_mutex *lock,
 		return -EDEADLK;
 
 	raw_spin_lock(&task->pi_lock);
+	__rt_mutex_adjust_prio(task);
 	waiter->task = task;
 	waiter->lock = lock;
 	waiter->prio = task->prio;
@@ -1042,17 +1039,8 @@ static void mark_wakeup_next_waiter(struct wake_q_head *wake_q,
 	 */
 	lock->owner = (void *) RT_MUTEX_HAS_WAITERS;
 
-	/*
-	 * We deboosted before waking the top waiter task such that we don't
-	 * run two tasks with the 'same' priority (and ensure the
-	 * p->pi_top_task pointer points to a blocked task). This however can
-	 * lead to priority inversion if we would get preempted after the
-	 * deboost but before waking our donor task, hence the preempt_disable()
-	 * before unlock.
-	 *
-	 * Pairs with preempt_enable() in rt_mutex_postunlock();
-	 */
-	preempt_disable();
+	raw_spin_unlock(&current->pi_lock);
+
 	wake_q_add(wake_q, waiter->task);
 	raw_spin_unlock(&current->pi_lock);
 }
@@ -1069,8 +1057,6 @@ static void remove_waiter(struct rt_mutex *lock,
 	bool is_top_waiter = (waiter == rt_mutex_top_waiter(lock));
 	struct task_struct *owner = rt_mutex_owner(lock);
 	struct rt_mutex *next_lock;
-
-	lockdep_assert_held(&lock->wait_lock);
 
 	raw_spin_lock(&current->pi_lock);
 	rt_mutex_dequeue(lock, waiter);
@@ -1390,9 +1376,11 @@ static bool __sched rt_mutex_slowunlock(struct rt_mutex *lock,
 	 * Queue the next waiter for wakeup once we release the wait_lock.
 	 */
 	mark_wakeup_next_waiter(wake_q, lock);
+
 	raw_spin_unlock_irqrestore(&lock->wait_lock, flags);
 
-	return true; /* call rt_mutex_postunlock() */
+	/* check PI boosting */
+	return true;
 }
 
 /*
@@ -1749,9 +1737,10 @@ int __rt_mutex_start_proxy_lock(struct rt_mutex *lock,
 {
 	int ret;
 
-	lockdep_assert_held(&lock->wait_lock);
+	raw_spin_lock_irq(&lock->wait_lock);
 
-	if (try_to_take_rt_mutex(lock, task, NULL))
+	if (try_to_take_rt_mutex(lock, task, NULL)) {
+		raw_spin_unlock_irq(&lock->wait_lock);
 		return 1;
 
 	/* We enforce deadlock detection for futexes */
@@ -1802,7 +1791,10 @@ int rt_mutex_start_proxy_lock(struct rt_mutex *lock,
 	ret = __rt_mutex_start_proxy_lock(lock, waiter, task);
 	if (unlikely(ret))
 		remove_waiter(lock, waiter);
+
 	raw_spin_unlock_irq(&lock->wait_lock);
+
+	debug_rt_mutex_print_deadlock(waiter);
 
 	return ret;
 }

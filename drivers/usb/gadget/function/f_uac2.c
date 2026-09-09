@@ -451,30 +451,6 @@ struct cntrl_range_lay3 {
 	__le32	dRES;
 } __packed;
 
-static inline void
-free_ep(struct uac2_rtd_params *prm, struct usb_ep *ep)
-{
-	struct snd_uac2_chip *uac2 = prm->uac2;
-	int i;
-
-	if (!prm->ep_enabled)
-		return;
-
-	prm->ep_enabled = false;
-
-	for (i = 0; i < USB_XFERS; i++) {
-		if (prm->ureq[i].req) {
-			usb_ep_dequeue(ep, prm->ureq[i].req);
-			usb_ep_free_request(ep, prm->ureq[i].req);
-			prm->ureq[i].req = NULL;
-		}
-	}
-
-	if (usb_ep_disable(ep))
-		dev_err(&uac2->pdev.dev,
-			"%s:%d Error!\n", __func__, __LINE__);
-}
-
 static int set_ep_max_packet_size(const struct f_uac2_opts *uac2_opts,
 	struct usb_endpoint_descriptor *ep_desc,
 	enum usb_device_speed speed, bool is_playback)
@@ -596,27 +572,6 @@ afunc_bind(struct usb_configuration *cfg, struct usb_function *fn)
 	uac2->as_in_alt = 0;
 
 	/* Calculate wMaxPacketSize according to audio bandwidth */
-	set_ep_max_packet_size(uac2_opts, &fs_epin_desc, 1000, true);
-	set_ep_max_packet_size(uac2_opts, &fs_epout_desc, 1000, false);
-	set_ep_max_packet_size(uac2_opts, &hs_epin_desc, 8000, true);
-	set_ep_max_packet_size(uac2_opts, &hs_epout_desc, 8000, false);
-
-	agdev->out_ep = usb_ep_autoconfig(gadget, &fs_epout_desc);
-	if (!agdev->out_ep) {
-		dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
-		return -ENODEV;
-	}
-
-	agdev->in_ep = usb_ep_autoconfig(gadget, &fs_epin_desc);
-	if (!agdev->in_ep) {
-		dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
-		return -ENODEV;
-	}
-
-	uac2->p_prm.uac2 = uac2;
-	uac2->c_prm.uac2 = uac2;
-
-	/* Calculate wMaxPacketSize according to audio bandwidth */
 	ret = set_ep_max_packet_size(uac2_opts, &fs_epin_desc, USB_SPEED_FULL,
 				     true);
 	if (ret < 0) {
@@ -644,6 +599,23 @@ afunc_bind(struct usb_configuration *cfg, struct usb_function *fn)
 		dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
 		return ret;
 	}
+
+	agdev->out_ep = usb_ep_autoconfig(gadget, &fs_epout_desc);
+	if (!agdev->out_ep) {
+		dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
+		return -ENODEV;
+	}
+
+	agdev->in_ep = usb_ep_autoconfig(gadget, &fs_epin_desc);
+	if (!agdev->in_ep) {
+		dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
+		return -ENODEV;
+	}
+
+	agdev->in_ep_maxpsize = max(fs_epin_desc.wMaxPacketSize,
+					hs_epin_desc.wMaxPacketSize);
+	agdev->out_ep_maxpsize = max(fs_epout_desc.wMaxPacketSize,
+					hs_epout_desc.wMaxPacketSize);
 
 	hs_epout_desc.bEndpointAddress = fs_epout_desc.bEndpointAddress;
 	hs_epin_desc.bEndpointAddress = fs_epin_desc.bEndpointAddress;

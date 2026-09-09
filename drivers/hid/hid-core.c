@@ -218,15 +218,15 @@ static int hid_add_usage(struct hid_parser *parser, unsigned usage, u8 size)
 		hid_err(parser->device, "usage index exceeded\n");
 		return -1;
 	}
-	if (!parser->local.usage_index && parser->global.usage_page)
-		parser->local.usage_page_preceding = 1;
-	if (parser->local.usage_page_preceding == 2)
-		parser->local.usage_page_preceding = 3;
-	if (size <= 2 && parser->global.usage_page)
-		parser->local.usage[parser->local.usage_index] =
-			(usage & 0xffff) + (parser->global.usage_page << 16);
-	else
-		parser->local.usage[parser->local.usage_index] = usage;
+	parser->local.usage[parser->local.usage_index] = usage;
+
+	/*
+	 * If Usage item only includes usage id, concatenate it with
+	 * currently defined usage page
+	 */
+	if (size <= 2)
+		complete_usage(parser, parser->local.usage_index);
+
 	parser->local.usage_size[parser->local.usage_index] = size;
 	parser->local.collection_index[parser->local.usage_index] =
 		parser->collection_stack_ptr ?
@@ -372,8 +372,6 @@ static int hid_parser_global(struct hid_parser *parser, struct hid_item *item)
 
 	case HID_GLOBAL_ITEM_TAG_USAGE_PAGE:
 		parser->global.usage_page = item_udata(item);
-		if (parser->local.usage_page_preceding == 1)
-			parser->local.usage_page_preceding = 2;
 		return 0;
 
 	case HID_GLOBAL_ITEM_TAG_LOGICAL_MINIMUM:
@@ -557,21 +555,26 @@ static void hid_concatenate_last_usage_page(struct hid_parser *parser)
 	unsigned int usage_page;
 	unsigned int current_page;
 
-	if (parser->local.usage_page_preceding == 3) {
-		dbg_hid("Using preceding usage page for final usage\n");
+	if (!parser->local.usage_index)
 		return;
-	}
 
-	if (parser->local.usage_page_preceding == 3) {
-		dbg_hid("Using preceding usage page for final usage\n");
-		return;
-	}
+	usage_page = parser->global.usage_page;
 
-	for (i = 0; i < parser->local.usage_index; i++)
-		if (parser->local.usage_size[i] <= 2)
-			parser->local.usage[i] =
-				(parser->global.usage_page << 16)
-				+ (parser->local.usage[i] & 0xffff);
+	/*
+	 * Concatenate usage page again only if last declared Usage Page
+	 * has not been already used in previous usages concatenation
+	 */
+	for (i = parser->local.usage_index - 1; i >= 0; i--) {
+		if (parser->local.usage_size[i] > 2)
+			/* Ignore extended usages */
+			continue;
+
+		current_page = parser->local.usage[i] >> 16;
+		if (current_page == usage_page)
+			break;
+
+		complete_usage(parser, i);
+	}
 }
 
 /*
@@ -1761,6 +1764,9 @@ int hid_connect(struct hid_device *hdev, unsigned int connect_mask)
 		break;
 	case BUS_I2C:
 		bus = "I2C";
+		break;
+	case BUS_VIRTUAL:
+		bus = "VIRTUAL";
 		break;
 	default:
 		bus = "<UNKNOWN>";
